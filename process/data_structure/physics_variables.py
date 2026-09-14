@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from enum import IntEnum, unique
-
 import numpy as np
 
 
@@ -978,6 +977,9 @@ class PhysicsData:
 
     i_alphaj: int = 0
     """Switch for plasma current profile index scaling (αⱼ) """
+
+    i_equilibrium_solve: int = 0
+    """Switch for veqpy axis iteration (0=off, 1=on)."""
 
     i_rad_loss: int = 1
     """switch for radiation loss term usage in power balance (see User Guide):

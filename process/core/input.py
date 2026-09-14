@@ -1049,6 +1049,7 @@ INPUT_VARIABLES = {
     "i_beta_norm_max": InputVariable("physics", int, range=(0, 5)),
     "i_ind_plasma_internal_norm": InputVariable("physics", int, range=(0, 2)),
     "i_alphaj": InputVariable("physics", int, range=(0, 1)),
+    "i_equilibrium_solve": InputVariable("physics", int, choices=[0, 1]),
     "i_fw_blkt_shared_coolant": InputVariable("fwbs", int, choices=[0, 1, 2]),
     "ireactor": InputVariable("costs", int, choices=[0, 1]),
     "irefprop": InputVariable("fwbs", int, choices=[0, 1]),

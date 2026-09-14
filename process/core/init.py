@@ -491,6 +491,12 @@ def check_process(inputs, data):  # noqa: ARG001
                 data.numerics.boundu[3], data.numerics.boundl[3]
             )
 
+        if data.physics.i_equilibrium_solve == 1:
+            if data.physics.i_alphaj != 0:
+                raise ProcessValidationError(
+                    "i_equilibrium_solve=1 requires i_alphaj=0 (user alphaj for veqpy j_tor)"
+                )
+
         # Density checks
         # Issue #589: Pedestal density is lower than separatrix density
         pedestal_type = DensityProfilePedestalType(

@@ -30,6 +30,28 @@ def _import_veqpy():
     return _veqpy
 
 
+def veqpy_equilibrium_available(data) -> bool:
+    """True if ``data.veqpy`` holds a converged equilibrium from the latest physics.run."""
+    veq = data.veqpy
+    return (
+        veq.equilibrium is not None
+        and veq.ne_axis_m3 > 0.0
+        and veq.te_axis_kev > 0.0
+    )
+
+
+def clear_veqpy_equilibrium_state(data) -> None:
+    """Remove transient veqpy results."""
+    data.veqpy.clear()
+
+
+def store_veqpy_equilibrium(data, eq, ne_axis: float, te_axis: float) -> None:
+    """Store veqpy equilibrium on ``data.veqpy`` (not on Model instances)."""
+    data.veqpy.equilibrium = eq
+    data.veqpy.ne_axis_m3 = float(ne_axis)
+    data.veqpy.te_axis_kev = float(te_axis)
+
+
 class PlasmaEquilibrium(Model):
     """Solve veqpy equilibria; results are stored on ``data.physics`` when bound."""
 
@@ -151,6 +173,13 @@ class PlasmaEquilibrium(Model):
         return float(eq.grid.integrate(integrand) / volume)
 
     @staticmethod
+    def get_volume_average_2(eq, profile):
+        """Volume average of a field already defined on the equilibrium grid."""
+        fun = np.asarray(profile, dtype=np.float64) * eq.R * eq.J
+        vol = eq.grid.integrate(eq.R * eq.J)
+        return float(eq.grid.integrate(fun) / vol)
+
+    @staticmethod
     def nd_profile(
         rho,
         i_plasma_pedestal,
@@ -268,8 +297,13 @@ class PlasmaEquilibrium(Model):
         te_axis=None,
         tol=1.0e-3,
         max_iter=25,
+        match_q95=False,
     ):
-        """Iterate axis ne/te (and adjust Ip) until ⟨n_e⟩, ⟨T_e⟩, q95 match targets.
+        """Iterate axis ne/te until veqpy volume averages match targets.
+
+        When ``match_q95`` is True, also adjust ``current`` so edge q95 matches
+        ``q95_target``. For PROCESS ``physics.run`` this must stay False so Ip
+        stays consistent with the rest of the code and scans remain idempotent.
 
         Returns
         -------
@@ -308,15 +342,19 @@ class PlasmaEquilibrium(Model):
             )
             ne_err = abs(ne_vol_avg - ne_vol_avg_target) / ne_vol_avg_target
             te_err = abs(te_vol_avg - te_vol_avg_target) / te_vol_avg_target
-            q95_err = abs(q95 - q95_target) / q95_target
-            if ne_err <= tol and te_err <= tol and q95_err <= tol:
-                return ne_axis, te_axis, current, eq
+            q95_ok = (
+                not match_q95
+                or q95_target <= 0.0
+                or abs(q95 - q95_target) / q95_target <= tol
+            )
+            if ne_err <= tol and te_err <= tol and q95_ok:
+                return ne_axis, te_axis, ne_vol_avg, te_vol_avg, q95, current, eq
 
             if ne_vol_avg > 0.0:
                 ne_axis *= ne_vol_avg_target / ne_vol_avg
             if te_vol_avg > 0.0:
                 te_axis *= te_vol_avg_target / te_vol_avg
-            if q95 > 0.0:
+            if match_q95 and q95 > 0.0 and q95_target > 0.0:
                 current *= q95 / q95_target
 
             if ne_axis < self.nd_plasma_pedestal_electron:
@@ -340,4 +378,34 @@ class PlasmaEquilibrium(Model):
             f"te={te_vol_avg:.4f} (target {te_vol_avg_target:.4f}), "
             f"q95={q95:.4f} (target {q95_target:.4f})"
         )
+
+    def calculate_ind_plasma_internal_norm(self, eq, b_poloidal_avg):
+        """Normalised internal inductance from volume-averaged Bp^2."""
+        r_t = eq.surface_fields[2]
+        z_t = eq.Z_t
+        bp2 = (
+            (eq.alpha2 * eq.psin_r[:, None]) ** 2
+            * (r_t**2 + z_t**2)
+            / (eq.J * eq.R) ** 2
+        )
+        bp2_vol_avg = self.get_volume_average_2(eq, bp2)
+        return bp2_vol_avg / b_poloidal_avg**2
+
+    @staticmethod
+    def miller_delta_profile(eq) -> np.ndarray:
+        """Miller delta vs normalised toroidal flux from veqpy geometry."""
+        r_grid = np.asarray(eq.R, dtype=np.float64)
+        z_grid = np.asarray(eq.Z, dtype=np.float64)
+        nrho = r_grid.shape[0]
+        delta = np.zeros(nrho, dtype=np.float64)
+        for i in range(nrho):
+            r_slice = r_grid[i]
+            z_slice = z_grid[i]
+            a_loc = eq.rho[i] * eq.a
+            if a_loc < 1.0e-12:
+                continue
+            r_geo = eq.Rc[i]
+            r_top = float(r_slice[np.argmax(z_slice)])
+            delta[i] = (r_geo - r_top) / a_loc
+        return delta
 
