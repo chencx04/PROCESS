@@ -184,6 +184,14 @@ class CurrentDriveData:
     eta_cd_norm_ecrh: float = 0.35
     """User input ECRH gamma (1.0e20 A/(W m^2))"""
 
+    eta_cd_beam: float = 0.0
+    """User-input neutral beam current drive efficiency for p-B11 [A/W].
+
+    Used when ``i_hcd_primary`` or ``i_hcd_secondary`` is 14. This value is
+    the absolute efficiency and is not calculated by the ITER or Culham
+    deuterium beam models.
+    """
+
     xi_ebw: float = 0.8
     """User scaling input for EBW plasma heating. Default 0.43"""
 
@@ -201,6 +209,8 @@ class CurrentDriveData:
     - =10 ECRH user input gamma
     - =11 ECRH "HARE" model (E. Poli, Physics of Plasmas 2019). Removed in #1811.
     - =12 EBW user scaling input. Scaling (S. Freethy)
+    - =13 Freethy electron cyclotron model
+    - =14 p-B11 neutral beam efficiency input directly (`eta_cd_beam`)
     """
 
     i_hcd_secondary: int = 0
@@ -218,6 +228,8 @@ class CurrentDriveData:
     - =10 ECRH user input gamma
     - =11 ECRH "HARE" model (E. Poli, Physics of Plasmas 2019). Removed in #1811.
     - =12 EBW user scaling input. Scaling (S. Freethy)
+    - =13 Freethy electron cyclotron model
+    - =14 p-B11 neutral beam efficiency input directly (`eta_cd_beam`)
     """
 
     i_hcd_calculations: int = 1

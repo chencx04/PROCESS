@@ -37,7 +37,7 @@ def plot_current_drive_info(axis: plt.Axes, mfile: MFile, scan: int):
 
     i_hcd_primary = mfile.get("i_hcd_primary", scan=scan)
 
-    if nbi := (i_hcd_primary in {5, 8}):
+    if nbi := (i_hcd_primary in {5, 8, 14}):
         axis.text(
             -0.05,
             1,
@@ -79,7 +79,7 @@ def plot_current_drive_info(axis: plt.Axes, mfile: MFile, scan: int):
         )
 
     i_hcd_secondary = mfile.get("i_hcd_secondary", scan=scan) or 0
-    if i_hcd_secondary in {5, 8}:
+    if i_hcd_secondary in {5, 8, 14}:
         secondary_heating = "NBI"
     elif i_hcd_secondary in {3, 7, 10, 11, 13}:
         secondary_heating = "ECH"

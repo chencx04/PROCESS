@@ -107,6 +107,11 @@ class CurrentDriveModel(IntEnum):
         CurrentDriveMethodType.ELECTRON_CYCLOTRON,
         "Freethy Electron Cyclotron",
     )
+    USER_INPUT_NEUTRAL_BEAM = (
+        14,
+        CurrentDriveMethodType.NEUTRAL_BEAM,
+        "User Input Neutral Beam",
+    )
 
     def __new__(cls, value: int, method: CurrentDriveMethodType, full_name: str):
         """Create a new CurrentDriveModel enum member."""
@@ -1818,10 +1823,14 @@ class CurrentDrive(Model):
                     )
                     * self.data.current_drive.feffcd
                 ),
+                14: self.user_input_neutral_beam_efficiency,
             }
 
             # Assign outputs for models that return multiple values
-            if secondary_cdm.method == CurrentDriveMethodType.NEUTRAL_BEAM:
+            if (
+                secondary_cdm.method == CurrentDriveMethodType.NEUTRAL_BEAM
+                and secondary_cdm != CurrentDriveModel.USER_INPUT_NEUTRAL_BEAM
+            ):
                 _, f_p_beam_injected_ions, f_p_beam_shine_through = (
                     self.neutral_beam.iternb()
                     if CurrentDriveModel(self.data.current_drive.i_hcd_secondary)
@@ -2378,6 +2387,26 @@ class CurrentDrive(Model):
         """
         return eta_cd_hcd * (nd_plasma_electrons_vol_avg * rmajor) * 1.0e-20
 
+    def user_input_neutral_beam_efficiency(self) -> float:
+        """Absolute p-B11 neutral beam efficiency from ``eta_cd_beam`` [A/W].
+
+        The ITER and Culham beam models are deuterium fits. This option uses
+        the input efficiency directly and does not call them.
+        """
+        if self.data.physics.i_fusion_reactions != "p-b11":
+            raise ProcessValueError(
+                "User-input neutral beam efficiency is only available for p-B11",
+                i_fusion_reactions=self.data.physics.i_fusion_reactions,
+            )
+        eta_cd_beam = self.data.current_drive.eta_cd_beam
+        if eta_cd_beam <= 0.0:
+            raise ProcessValueError(
+                "eta_cd_beam must be positive when i_hcd_primary or "
+                "i_hcd_secondary is 14",
+                eta_cd_beam=eta_cd_beam,
+            )
+        return eta_cd_beam
+
     @staticmethod
     def calculate_dimensionless_current_drive_efficiency(
         eta_cd_hcd: float,
@@ -2511,6 +2540,17 @@ class CurrentDrive(Model):
                 "ECRH plasma heating efficiency",
                 "(eta_cd_norm_ecrh)",
                 self.data.current_drive.eta_cd_norm_ecrh,
+            )
+        if (
+            CurrentDriveModel(self.data.current_drive.i_hcd_primary)
+            == CurrentDriveModel.USER_INPUT_NEUTRAL_BEAM
+        ):
+            po.ovarre(
+                self.outfile,
+                "Input neutral beam current drive efficiency [A/W]",
+                "(eta_cd_beam)",
+                self.data.current_drive.eta_cd_beam,
+                "IP ",
             )
         po.ovarre(
             self.outfile,
@@ -2743,6 +2783,17 @@ class CurrentDrive(Model):
                 "ECRH plasma heating efficiency",
                 "(eta_cd_norm_ecrh)",
                 self.data.current_drive.eta_cd_norm_ecrh,
+            )
+        if (
+            CurrentDriveModel(self.data.current_drive.i_hcd_secondary)
+            == CurrentDriveModel.USER_INPUT_NEUTRAL_BEAM
+        ):
+            po.ovarre(
+                self.outfile,
+                "Input neutral beam current drive efficiency [A/W]",
+                "(eta_cd_beam)",
+                self.data.current_drive.eta_cd_beam,
+                "IP ",
             )
 
         po.ovarre(

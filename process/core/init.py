@@ -1263,7 +1263,7 @@ def check_process(inputs, data):  # noqa: ARG001
 
     # If there is no NBI, then hot beam density should be zero
     if data.current_drive.i_hcd_calculations == 1:
-        if data.current_drive.i_hcd_primary not in {5, 8}:
+        if data.current_drive.i_hcd_primary not in {5, 8, 14}:
             data.physics.f_nd_beam_electron = 0.0
     else:
         data.physics.f_nd_beam_electron = 0.0
