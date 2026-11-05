@@ -167,6 +167,37 @@ def test_current_drive_primary_neutral_beam(current_drive):
     )
 
 
+def test_current_drive_p_b11_user_input_neutral_beam(current_drive):
+    current_drive.data.physics.i_fusion_reactions = "p-b11"
+    current_drive.data.current_drive.i_hcd_primary = 14
+    current_drive.data.current_drive.i_hcd_secondary = 0
+    current_drive.data.current_drive.i_hcd_calculations = 1
+    current_drive.data.current_drive.eta_cd_beam = 0.05
+    current_drive.data.current_drive.p_hcd_primary_extra_heat_mw = 0.0
+    current_drive.data.current_drive.feffcd = 2.0
+    current_drive.data.physics.nd_plasma_electrons_vol_avg = 1.0e20
+    current_drive.data.physics.temp_plasma_electron_vol_avg_kev = 10.0
+    current_drive.data.physics.rmajor = 6.2
+    current_drive.data.physics.plasma_current = 15.0e6
+    current_drive.data.physics.f_c_plasma_auxiliary = 0.2
+    current_drive.data.current_drive.eta_beam_injector_wall_plug = 0.3
+
+    def fail_if_called():
+        raise AssertionError("deuterium beam model should not be called")
+
+    current_drive.neutral_beam.iternb = fail_if_called
+    current_drive.neutral_beam.culnbi = fail_if_called
+    current_drive.current_drive()
+
+    assert current_drive.data.current_drive.eta_cd_hcd_primary == pytest.approx(0.05)
+    assert current_drive.data.current_drive.p_hcd_primary_injected_mw == pytest.approx(
+        60.0
+    )
+    assert current_drive.data.current_drive.eta_cd_norm_hcd_primary == pytest.approx(
+        0.31
+    )
+
+
 def test_current_drive_primary_electron_cyclotron(current_drive):
     current_drive.data.current_drive.i_hcd_primary = 3  # Electron Cyclotron
     current_drive.data.current_drive.i_hcd_secondary = 0

@@ -1135,7 +1135,7 @@ class Buildings(Model):
                 hotcell_vol_ext,
             )
             po.oblnkl(self.outfile)
-            if self.data.current_drive.i_hcd_primary not in {5, 8}:
+            if self.data.current_drive.i_hcd_primary not in {5, 8, 14}:
                 po.ovarre(
                     self.outfile,
                     "HCD (EC/EBW) building footprint (m2)",

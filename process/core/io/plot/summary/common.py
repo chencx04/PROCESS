@@ -132,8 +132,8 @@ def color_key(axis: plt.Axes, mfile: MFile, scan: int, colour_scheme: Literal[1,
         ("Divertor", "black"),
     ]
 
-    if (mfile.get("i_hcd_primary", scan=scan) in {5, 8}) or (
-        mfile.get("i_hcd_secondary", scan=scan) in {5, 8}
+    if (mfile.get("i_hcd_primary", scan=scan) in {5, 8, 14}) or (
+        mfile.get("i_hcd_secondary", scan=scan) in {5, 8, 14}
     ):
         labels.extend((
             ("NB duct shield", NBSHIELD_COLOUR[colour_scheme - 1]),
