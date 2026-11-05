@@ -293,7 +293,7 @@ def sauter_plasma_resistance(
         rho_use = np.asarray(eq.rho, dtype=float)
         ne = np.interp(rho_use, rho_in, ne_in)
         te = np.interp(rho_use, rho_in, te_in)
-        rc = float(eq.Rc)
+        rc = np.asarray(eq.Rc, dtype=float)
         q_profile = np.asarray(eq.q, dtype=float)
         f_t = np.clip(np.asarray(eq.ftrap, dtype=float), 1.0e-8, 0.999)
     else:
