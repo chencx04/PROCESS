@@ -671,6 +671,30 @@ class PlasmaReactions(Model):
             "(f_plasma_fuel_helium3)",
             self.data.physics.f_plasma_fuel_helium3,
         )
+        po.ovarre(
+            self.outfile,
+            "Proton fuel fraction",
+            "(f_plasma_fuel_proton)",
+            self.data.physics.f_plasma_fuel_proton,
+        )
+        po.ovarre(
+            self.outfile,
+            "Boron-11 fuel fraction",
+            "(f_plasma_fuel_boron11)",
+            self.data.physics.f_plasma_fuel_boron11,
+        )
+        po.ovarre(
+            self.outfile,
+            "Fusion reaction set",
+            "(i_fusion_reactions)",
+            self.data.physics.i_fusion_reactions,
+        )
+        po.ovarre(
+            self.outfile,
+            "p-B11 reactivity model (1 = Nevins, 2 = Tentori)",
+            "(i_pb_reactivity_model)",
+            self.data.physics.i_pb_reactivity_model,
+        )
         po.oblnkl(self.outfile)
         po.ocmmnt(self.outfile, "----------------------------")
         po.osubhd(self.outfile, "Fusion rates :")
@@ -749,6 +773,13 @@ class PlasmaReactions(Model):
                 f"fusden_plasma_dhe3_profile{i}",
                 self.data.physics.fusden_plasma_dhe3_profile[i],
             )
+        for i in range(len(self.data.physics.fusden_plasma_pb_profile)):
+            po.ovarre(
+                self.mfile,
+                f"p-B11 fusion rate density in plasma at point {i}",
+                f"fusden_plasma_pb_profile{i}",
+                self.data.physics.fusden_plasma_pb_profile[i],
+            )
         po.ovarre(
             self.outfile,
             "D-T fusion power: plasma [MW]",
@@ -812,6 +843,42 @@ class PlasmaReactions(Model):
             "Volume-averaged D-3He fusion power density [MW/m³]",
             "(pden_dhe3_total_vol_avg_mw)",
             self.data.physics.pden_dhe3_total_vol_avg_mw,
+            "OP ",
+        )
+        po.oblnkl(self.outfile)
+        po.ovarre(
+            self.outfile,
+            "p-B11 fusion power: total [MW]",
+            "(p_pb_total_mw)",
+            self.data.physics.p_pb_total_mw,
+            "OP ",
+        )
+        po.ovarre(
+            self.outfile,
+            "p-B11 fusion power: plasma [MW]",
+            "(p_plasma_pb_mw)",
+            self.data.physics.p_plasma_pb_mw,
+            "OP ",
+        )
+        po.ovarre(
+            self.outfile,
+            "Volume-averaged p-B11 fusion power density: plasma [MW/m³]",
+            "(pden_plasma_pb_vol_avg_mw)",
+            self.data.physics.pden_plasma_pb_vol_avg_mw,
+            "OP ",
+        )
+        po.ovarre(
+            self.outfile,
+            "Volume-averaged plasma p-B11 fusion reactivity (〈σv〉ᵥ) [m³/s]",  # noqa: RUF001
+            "(sigma_v_plasma_pb_vol_avg)",
+            self.data.physics.sigma_v_plasma_pb_vol_avg,
+            "OP ",
+        )
+        po.ovarre(
+            self.outfile,
+            "p-B11 fusion power: beam [MW]",
+            "(p_beam_pb_mw)",
+            self.data.physics.p_beam_pb_mw,
             "OP ",
         )
 

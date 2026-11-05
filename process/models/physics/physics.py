@@ -491,6 +491,14 @@ class Physics(Model):
 
 
         """
+        logger.info(
+            "Physics model: reactions=%s, equilibrium=%s, radiation=%s, "
+            "p-B11 reactivity=%s",
+            self.data.physics.i_fusion_reactions,
+            self.data.physics.i_equilibrium_solve,
+            self.data.physics.i_calculate_radiation,
+            self.data.physics.i_pb_reactivity_model,
+        )
         # Calculate plasma composition
         # Issue #261 Remove old radiation model (imprad_model=0)
         if self.data.physics.i_fusion_reactions == "d-t-he3":
@@ -2856,7 +2864,23 @@ class Physics(Model):
 
         po.oblnkl(self.outfile)
         po.ocmmnt(self.outfile, "----------------------------")
-        po.osubhd(self.outfile, "Line, Recombination & Bremsstrahlung Radiation:")
+        if self.data.physics.i_fusion_reactions == "p-b11":
+            po.osubhd(self.outfile, "Bremsstrahlung Radiation:")
+            po.ocmmnt(
+                self.outfile,
+                "p-B11 radiation is Xie ion and electron-electron bremsstrahlung. "
+                "Boron is fuel and is excluded from the impurity sum.",
+            )
+        else:
+            po.osubhd(
+                self.outfile, "Line, Recombination & Bremsstrahlung Radiation:"
+            )
+        po.ovarre(
+            self.outfile,
+            "Radiation model (1 = ADAS, 2 = Xie bremsstrahlung + Albajar synchrotron)",
+            "(i_calculate_radiation)",
+            self.data.physics.i_calculate_radiation,
+        )
 
         self.output_species_radiation_power_density()
         self.data.physics.f_p_plasma_rad_impurities = (
@@ -3611,6 +3635,12 @@ class Physics(Model):
             self.outfile,
             f"Plasma profile model selected: "
             f"{PlasmaProfileShapeType(self.data.physics.i_plasma_pedestal).description}",
+        )
+        po.ovarre(
+            self.outfile,
+            "Equilibrium solve (0 = prescribed profiles, 1 = veqpy)",
+            "(i_equilibrium_solve)",
+            self.data.physics.i_equilibrium_solve,
         )
         if self.data.physics.i_equilibrium_solve == 1:
             po.ocmmnt(
@@ -6061,11 +6091,25 @@ class PlasmaInductance(Model):
             self.data.physics.csawth,
         )
         po.oblnkl(self.outfile)
+        if self.data.physics.i_fusion_reactions == "p-b11":
+            po.ocmmnt(
+                self.outfile,
+                "Plasma resistance from the Sauter neoclassical conductivity",
+            )
+        else:
+            po.ocmmnt(self.outfile, "Plasma resistance from the IPDG89 Spitzer fit")
         po.ovarre(
             self.outfile,
             "Plasma resistance (Ω) (ohm)",
             "(res_plasma)",
             self.data.physics.res_plasma,
+            "OP ",
+        )
+        po.ovarre(
+            self.outfile,
+            "Neoclassical resistivity factor",
+            "(f_res_plasma_neo)",
+            self.data.physics.f_res_plasma_neo,
             "OP ",
         )
 

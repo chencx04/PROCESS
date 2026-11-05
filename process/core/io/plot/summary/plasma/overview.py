@@ -479,18 +479,38 @@ def plot_main_plasma_information(
     )
     add_symbol("$\\tau_{\\text{e}}$", 0.30, 0.55)
 
-    textstr_reactions = (
-        "$\\mathbf{Fusion\\ Reactions:}$\n\n"
-        "Fuel mixture:\n"
-        f"| D: {value('f_plasma_fuel_deuterium'):.2f} | "
-        f"T: {value('f_plasma_fuel_tritium'):.2f} | "
-        f"3He: {value('f_plasma_fuel_helium3'):.2f} |\n\n"
-        f"Fusion Power, $P_{{\\text{{fus}}}}$: {value('p_fusion_total_mw'):,.2f} MW\n"
-        f"D-T Power, $P_{{\\text{{fus,DT}}}}$: {value('p_dt_total_mw'):,.2f} MW\n"
-        f"D-D Power, $P_{{\\text{{fus,DD}}}}$: {value('p_dd_total_mw'):,.2f} MW\n"
-        f"D-3He Power, $P_{{\\text{{fus,D3He}}}}$: {value('p_dhe3_total_mw'):,.2f} MW\n"
-        f"Alpha Power, $P_{{\\alpha}}$: {value('p_alpha_total_mw'):,.2f} MW"
+    fusion_reaction = (
+        mfile.data["i_fusion_reactions"].get_scan(scan)
+        if "i_fusion_reactions" in mfile.data
+        else "d-t-he3"
     )
+    if fusion_reaction == "p-b11":
+        textstr_reactions = (
+            "$\\mathbf{Fusion\\ Reactions:}$\n\n"
+            "Fuel mixture:\n"
+            f"| p: {value('f_plasma_fuel_proton'):.2f} | "
+            f"B11: {value('f_plasma_fuel_boron11'):.2f} |\n\n"
+            f"Fusion Power, $P_{{\\text{{fus}}}}$: "
+            f"{value('p_fusion_total_mw'):,.2f} MW\n"
+            f"p-B11 Power, $P_{{\\text{{fus,pB}}}}$: "
+            f"{value('p_pb_total_mw'):,.2f} MW\n"
+            f"Alpha Power, $P_{{\\alpha}}$: {value('p_alpha_total_mw'):,.2f} MW"
+        )
+    else:
+        textstr_reactions = (
+            "$\\mathbf{Fusion\\ Reactions:}$\n\n"
+            "Fuel mixture:\n"
+            f"| D: {value('f_plasma_fuel_deuterium'):.2f} | "
+            f"T: {value('f_plasma_fuel_tritium'):.2f} | "
+            f"3He: {value('f_plasma_fuel_helium3'):.2f} |\n\n"
+            f"Fusion Power, $P_{{\\text{{fus}}}}$: "
+            f"{value('p_fusion_total_mw'):,.2f} MW\n"
+            f"D-T Power, $P_{{\\text{{fus,DT}}}}$: {value('p_dt_total_mw'):,.2f} MW\n"
+            f"D-D Power, $P_{{\\text{{fus,DD}}}}$: {value('p_dd_total_mw'):,.2f} MW\n"
+            f"D-3He Power, $P_{{\\text{{fus,D3He}}}}$: "
+            f"{value('p_dhe3_total_mw'):,.2f} MW\n"
+            f"Alpha Power, $P_{{\\alpha}}$: {value('p_alpha_total_mw'):,.2f} MW"
+        )
     add_panel(
         0.025,
         0.400,

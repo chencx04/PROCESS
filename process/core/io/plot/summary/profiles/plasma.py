@@ -642,35 +642,87 @@ def plot_qprofile(prof, demo_ranges: bool, mfile: MFile, scan: int):
     )
 
 
+def _fusion_reaction_set(mfile: MFile, scan: int) -> str:
+    """Return the fusion reaction set written to the MFILE."""
+    try:
+        return str(mfile.get("i_fusion_reactions", scan=scan))
+    except KeyError:
+        return "d-t-he3"
+
+
+def _mfile_profile(mfile: MFile, name: str, n_points: int, scan: int) -> list:
+    return [mfile.get(f"{name}{i}", scan=scan) for i in range(n_points)]
+
+
 def plot_fusion_rate_density_profiles(axis: plt.Axes, fig, mfile: MFile, scan: int):
     """Plot the fusion rate density profiles on the given axis"""
     n_plasma_profile_elements = int(mfile.get("n_plasma_profile_elements", scan=scan))
-
-    fusden_plasma_dt_profile = [
-        mfile.get(f"fusden_plasma_dt_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
-
-    fusden_plasma_dd_triton_profile = [
-        mfile.get(f"fusden_plasma_dd_triton_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
-
-    fusden_plasma_dd_helion_profile = [
-        mfile.get(f"fusden_plasma_dd_helion_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
-    fusden_plasma_dhe3_profile = [
-        mfile.get(f"fusden_plasma_dhe3_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
+    p_b11 = _fusion_reaction_set(mfile, scan) == "p-b11"
+    if p_b11:
+        reaction_profiles = [
+            (
+                r"$\mathrm{p-B11}$",
+                _mfile_profile(
+                    mfile,
+                    "fusden_plasma_pb_profile",
+                    n_plasma_profile_elements,
+                    scan,
+                ),
+                constants.PB_ENERGY,
+                "-",
+            )
+        ]
+    else:
+        reaction_profiles = [
+            (
+                r"$\mathrm{D-T}$",
+                _mfile_profile(
+                    mfile,
+                    "fusden_plasma_dt_profile",
+                    n_plasma_profile_elements,
+                    scan,
+                ),
+                constants.D_T_ENERGY,
+                "-",
+            ),
+            (
+                r"$\mathrm{D-D \ Triton}$",
+                _mfile_profile(
+                    mfile,
+                    "fusden_plasma_dd_triton_profile",
+                    n_plasma_profile_elements,
+                    scan,
+                ),
+                constants.DD_TRITON_ENERGY,
+                ":",
+            ),
+            (
+                r"$\mathrm{D-D \ Helion}$",
+                _mfile_profile(
+                    mfile,
+                    "fusden_plasma_dd_helion_profile",
+                    n_plasma_profile_elements,
+                    scan,
+                ),
+                constants.DD_HELIUM_ENERGY,
+                "-.",
+            ),
+            (
+                r"$\mathrm{D-3He}$",
+                _mfile_profile(
+                    mfile,
+                    "fusden_plasma_dhe3_profile",
+                    n_plasma_profile_elements,
+                    scan,
+                ),
+                constants.D_HELIUM_ENERGY,
+                "--",
+            ),
+        ]
 
     fusden_plasma_total_profile = [
-        fusden_plasma_dt_profile[i]
-        + fusden_plasma_dd_triton_profile[i]
-        + fusden_plasma_dd_helion_profile[i]
-        + fusden_plasma_dhe3_profile[i]
-        for i in range(len(fusden_plasma_dt_profile))
+        sum(profile[i] for _, profile, _, _ in reaction_profiles)
+        for i in range(n_plasma_profile_elements)
     ]
 
     axis.spines["left"].set_color("red")
@@ -679,34 +731,15 @@ def plot_fusion_rate_density_profiles(axis: plt.Axes, fig, mfile: MFile, scan: i
 
     # Plot fusion rates (dashed lines, left axis) with axis color and different
     # linestyles
-    axis.plot(
-        np.linspace(0, 1, len(fusden_plasma_dt_profile)),
-        fusden_plasma_dt_profile,
-        color=axis.spines["left"].get_edgecolor(),
-        linestyle="-",
-        label=r"$\mathrm{D-T}$",
-    )
-    axis.plot(
-        np.linspace(0, 1, len(fusden_plasma_dd_triton_profile)),
-        fusden_plasma_dd_triton_profile,
-        color=axis.spines["left"].get_edgecolor(),
-        linestyle=":",
-        label=r"$\mathrm{D-D \ Triton}$",
-    )
-    axis.plot(
-        np.linspace(0, 1, len(fusden_plasma_dd_helion_profile)),
-        fusden_plasma_dd_helion_profile,
-        color=axis.spines["left"].get_edgecolor(),
-        linestyle="-.",
-        label=r"$\mathrm{D-D \ Helion}$",
-    )
-    axis.plot(
-        np.linspace(0, 1, len(fusden_plasma_dhe3_profile)),
-        fusden_plasma_dhe3_profile,
-        color=axis.spines["left"].get_edgecolor(),
-        linestyle="--",
-        label=r"$\mathrm{D-3He}$",
-    )
+    rho_plot = np.linspace(0, 1, n_plasma_profile_elements)
+    for label, profile, _, linestyle in reaction_profiles:
+        axis.plot(
+            rho_plot,
+            profile,
+            color=axis.spines["left"].get_edgecolor(),
+            linestyle=linestyle,
+            label=label,
+        )
     axis.plot(
         np.linspace(0, 1, len(fusden_plasma_total_profile)),
         fusden_plasma_total_profile,
@@ -746,39 +779,19 @@ def plot_fusion_rate_density_profiles(axis: plt.Axes, fig, mfile: MFile, scan: i
     ax2.spines["right"].set_color("blue")
     ax2.yaxis.label.set_color("black")
     ax2.tick_params(axis="y", colors="blue")
+    total_power_density = np.zeros(n_plasma_profile_elements)
+    for _, profile, energy, linestyle in reaction_profiles:
+        power_density = np.array(profile) * energy
+        total_power_density += power_density
+        ax2.plot(
+            rho_plot,
+            power_density,
+            color=ax2.spines["right"].get_edgecolor(),
+            linestyle=linestyle,
+        )
     ax2.plot(
-        np.linspace(0, 1, len(fusden_plasma_dt_profile)),
-        np.array(fusden_plasma_dt_profile) * constants.D_T_ENERGY,
-        color=ax2.spines["right"].get_edgecolor(),
-        linestyle="-",
-    )
-
-    ax2.plot(
-        np.linspace(0, 1, len(fusden_plasma_dd_triton_profile)),
-        np.array(fusden_plasma_dd_triton_profile) * constants.DD_TRITON_ENERGY,
-        color=ax2.spines["right"].get_edgecolor(),
-        linestyle=":",
-    )
-    ax2.plot(
-        np.linspace(0, 1, len(fusden_plasma_dd_helion_profile)),
-        np.array(fusden_plasma_dd_helion_profile) * constants.DD_HELIUM_ENERGY,
-        color=ax2.spines["right"].get_edgecolor(),
-        linestyle="-.",
-    )
-    ax2.plot(
-        np.linspace(0, 1, len(fusden_plasma_dhe3_profile)),
-        np.array(fusden_plasma_dhe3_profile) * constants.D_HELIUM_ENERGY,
-        color=ax2.spines["right"].get_edgecolor(),
-        linestyle="--",
-    )
-    ax2.plot(
-        np.linspace(0, 1, len(fusden_plasma_total_profile)),
-        (
-            np.array(fusden_plasma_dhe3_profile) * constants.D_HELIUM_ENERGY
-            + np.array(fusden_plasma_dd_helion_profile) * constants.DD_HELIUM_ENERGY
-            + np.array(fusden_plasma_dd_triton_profile) * constants.DD_TRITON_ENERGY
-            + np.array(fusden_plasma_dt_profile) * constants.D_T_ENERGY
-        ),
+        rho_plot,
+        total_power_density,
         color=ax2.spines["right"].get_edgecolor(),
         linestyle="None",
         marker="d",
@@ -841,84 +854,113 @@ def plot_fusion_rate_density_profiles(axis: plt.Axes, fig, mfile: MFile, scan: i
 
     # ============================================================================
 
-    textstr_dt = (
-        f"Total fusion power: {mfile.get('p_dt_total_mw', scan=scan):,.2f}"
-        " MW\nPlasma fusion power:"
-        f" {mfile.get('p_plasma_dt_mw', scan=scan):,.2f} MW\nVolume-averaged"
-        " fusion power density: plasma:"
-        f" {mfile.get('pden_plasma_dt_vol_avg_mw', scan=scan):,.3f}"
-        " MW/m³\nBeam fusion power:"
-        f" {mfile.get('p_beam_dt_mw', scan=scan):,.2f} MW"
-    )
+    if p_b11:
+        textstr_pb = (
+            f"Total fusion power: {mfile.get('p_pb_total_mw', scan=scan):,.2f}"
+            " MW\nPlasma fusion power:"
+            f" {mfile.get('p_plasma_pb_mw', scan=scan):,.2f} MW\nVolume-averaged"
+            " fusion power density: plasma:"
+            f" {mfile.get('pden_plasma_pb_vol_avg_mw', scan=scan):,.3f}"
+            " MW/m³\nBeam fusion power:"
+            f" {mfile.get('p_beam_pb_mw', scan=scan):,.2f} MW\n"
+            f"Reactivity <sigma v>: "
+            f"{mfile.get('sigma_v_plasma_pb_vol_avg', scan=scan):.3e}"
+            " m³/s"
+        )
+        axis.text(
+            0.05,
+            0.75,
+            textstr_pb,
+            **text_layout(fig),
+            bbox=box_style("lightyellow"),
+        )
+        axis.text(
+            0.36,
+            0.79,
+            "$\\text{p - B11}$",
+            fontsize=20,
+            verticalalignment="top",
+            transform=fig.transFigure,
+        )
+    else:
+        textstr_dt = (
+            f"Total fusion power: {mfile.get('p_dt_total_mw', scan=scan):,.2f}"
+            " MW\nPlasma fusion power:"
+            f" {mfile.get('p_plasma_dt_mw', scan=scan):,.2f} MW\nVolume-averaged"
+            " fusion power density: plasma:"
+            f" {mfile.get('pden_plasma_dt_vol_avg_mw', scan=scan):,.3f}"
+            " MW/m³\nBeam fusion power:"
+            f" {mfile.get('p_beam_dt_mw', scan=scan):,.2f} MW"
+        )
 
-    axis.text(
-        0.05,
-        0.75,
-        textstr_dt,
-        **text_layout(fig),
-        bbox=box_style("lightyellow"),
-    )
+        axis.text(
+            0.05,
+            0.75,
+            textstr_dt,
+            **text_layout(fig),
+            bbox=box_style("lightyellow"),
+        )
 
-    axis.text(
-        0.39,
-        0.79,
-        "$\\text{D - T}$",
-        fontsize=20,
-        verticalalignment="top",
-        transform=fig.transFigure,
-    )
+        axis.text(
+            0.39,
+            0.79,
+            "$\\text{D - T}$",
+            fontsize=20,
+            verticalalignment="top",
+            transform=fig.transFigure,
+        )
 
-    # =================================================
+        # =================================================
 
-    textstr_dd = (
-        f"Total fusion power: {mfile.get('p_dd_total_mw', scan=scan):,.2f}"
-        " MW\nVolume-averaged total power density:"
-        f" {mfile.get('pden_dd_total_vol_avg_mw', scan=scan):,.3e}"
-        " MW/m³\nTritium branching ratio:"
-        f" {mfile.get('f_dd_branching_trit', scan=scan):.4f}"
-    )
+        textstr_dd = (
+            f"Total fusion power: {mfile.get('p_dd_total_mw', scan=scan):,.2f}"
+            " MW\nVolume-averaged total power density:"
+            f" {mfile.get('pden_dd_total_vol_avg_mw', scan=scan):,.3e}"
+            " MW/m³\nTritium branching ratio:"
+            f" {mfile.get('f_dd_branching_trit', scan=scan):.4f}"
+        )
 
-    axis.text(
-        0.05,
-        0.65,
-        textstr_dd,
-        **text_layout(fig),
-        bbox=box_style("lightyellow"),
-    )
+        axis.text(
+            0.05,
+            0.65,
+            textstr_dd,
+            **text_layout(fig),
+            bbox=box_style("lightyellow"),
+        )
 
-    axis.text(
-        0.36,
-        0.685,
-        "$\\text{D - D}$",
-        fontsize=20,
-        verticalalignment="top",
-        transform=fig.transFigure,
-    )
+        axis.text(
+            0.36,
+            0.685,
+            "$\\text{D - D}$",
+            fontsize=20,
+            verticalalignment="top",
+            transform=fig.transFigure,
+        )
 
-    # =================================================
+        # =================================================
 
-    textstr_dhe3 = (
-        f"Total fusion power: {mfile.get('p_dhe3_total_mw', scan=scan):,.2f}"
-        " MW\n\nVolume-averaged total power density:"
-        f" {mfile.get('pden_dhe3_total_vol_avg_mw', scan=scan):,.3e} MW/m³\n\n"
-    )
+        textstr_dhe3 = (
+            f"Total fusion power: {mfile.get('p_dhe3_total_mw', scan=scan):,.2f}"
+            " MW\n\nVolume-averaged total power density:"
+            f" {mfile.get('pden_dhe3_total_vol_avg_mw', scan=scan):,.3e} MW/m³\n\n"
+        )
 
-    axis.text(
-        0.05,
-        0.55,
-        textstr_dhe3,
-        **text_layout(fig),
-        bbox=box_style("lightyellow"),
-    )
+        axis.text(
+            0.05,
+            0.55,
+            textstr_dhe3,
+            **text_layout(fig),
+            bbox=box_style("lightyellow"),
+        )
 
-    axis.text(
-        0.21,
-        0.59,
-        "$\\text{D - 3He}$",
-        fontsize=20,
-        verticalalignment="top",
-        transform=fig.transFigure,
-    )
+        axis.text(
+            0.21,
+            0.59,
+            "$\\text{D - 3He}$",
+            fontsize=20,
+            verticalalignment="top",
+            transform=fig.transFigure,
+        )
 
     # =================================================
 
@@ -1005,51 +1047,56 @@ def plot_fusion_rate_profiles(
         If given, an axis on which only the cumulative total fusion rate is plotted
         on a linear scale.
     """
-    fusden_plasma_dt_profile = []
-    fusden_plasma_dd_triton_profile = []
-    fusden_plasma_dd_helion_profile = []
-    fusden_plasma_dhe3_profile = []
-
     vol_plasma = mfile.get("vol_plasma", scan=scan)
     n_plasma_profile_elements = int(mfile.get("n_plasma_profile_elements", scan=scan))
     fusrat_total = mfile.get("fusrat_total", scan=scan)
 
     rho, _, _ = profiles_with_pedestal(mfile, scan)
 
-    fusden_plasma_dt_profile = [
-        mfile.get(f"fusden_plasma_dt_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
-
-    fusden_plasma_dd_triton_profile = [
-        mfile.get(f"fusden_plasma_dd_triton_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
-
-    fusden_plasma_dd_helion_profile = [
-        mfile.get(f"fusden_plasma_dd_helion_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
-    fusden_plasma_dhe3_profile = [
-        mfile.get(f"fusden_plasma_dhe3_profile{i}", scan=scan)
-        for i in range(n_plasma_profile_elements)
-    ]
+    if _fusion_reaction_set(mfile, scan) == "p-b11":
+        channel_profiles = {
+            "$\\Gamma_{\\mathrm{p-B11}}$": _mfile_profile(
+                mfile, "fusden_plasma_pb_profile", n_plasma_profile_elements, scan
+            )
+        }
+        channel_colors = {"$\\Gamma_{\\mathrm{p-B11}}$": "red"}
+    else:
+        channel_profiles = {
+            "$\\Gamma_{D-T}$": _mfile_profile(
+                mfile, "fusden_plasma_dt_profile", n_plasma_profile_elements, scan
+            ),
+            "$\\Gamma_{\\mathrm{D-D\\ Triton}}$": _mfile_profile(
+                mfile,
+                "fusden_plasma_dd_triton_profile",
+                n_plasma_profile_elements,
+                scan,
+            ),
+            "$\\Gamma_{\\mathrm{D-D\\ Helion}}$": _mfile_profile(
+                mfile,
+                "fusden_plasma_dd_helion_profile",
+                n_plasma_profile_elements,
+                scan,
+            ),
+            "$\\Gamma_{\\mathrm{D-}^3\\mathrm{He}}$": _mfile_profile(
+                mfile, "fusden_plasma_dhe3_profile", n_plasma_profile_elements, scan
+            ),
+        }
+        channel_colors = {
+            "$\\Gamma_{D-T}$": "red",
+            "$\\Gamma_{\\mathrm{D-D\\ Triton}}$": "tab:blue",
+            "$\\Gamma_{\\mathrm{D-D\\ Helion}}$": "tab:green",
+            "$\\Gamma_{\\mathrm{D-}^3\\mathrm{He}}$": "tab:orange",
+        }
 
     fusden_plasma_total_profile = [
-        fusden_plasma_dt_profile[i]
-        + fusden_plasma_dd_triton_profile[i]
-        + fusden_plasma_dd_helion_profile[i]
-        + fusden_plasma_dhe3_profile[i]
-        for i in range(len(fusden_plasma_dt_profile))
+        sum(profile[i] for profile in channel_profiles.values())
+        for i in range(n_plasma_profile_elements)
     ]
 
     # Convert each reaction-rate density into shell contributions, then integrate
     # cumulatively to obtain the fusion-rate profile for that reaction.
     reaction_profiles = {
-        "$\\Gamma_{D-T}$": fusden_plasma_dt_profile,
-        "$\\Gamma_{\\mathrm{D-D\\ Triton}}$": fusden_plasma_dd_triton_profile,
-        "$\\Gamma_{\\mathrm{D-D\\ Helion}}$": fusden_plasma_dd_helion_profile,
-        "$\\Gamma_{\\mathrm{D-}^3\\mathrm{He}}$": fusden_plasma_dhe3_profile,
+        **channel_profiles,
         "$\\Gamma_{\\mathrm{Total}}$": fusden_plasma_total_profile,
     }
     cum_fusrat_profiles = {
@@ -1066,10 +1113,7 @@ def plot_fusion_rate_profiles(
     )
 
     line_colors = {
-        "$\\Gamma_{D-T}$": "red",
-        "$\\Gamma_{\\mathrm{D-D\\ Triton}}$": "tab:blue",
-        "$\\Gamma_{\\mathrm{D-D\\ Helion}}$": "tab:green",
-        "$\\Gamma_{\\mathrm{D-}^3\\mathrm{He}}$": "tab:orange",
+        **channel_colors,
         "$\\Gamma_{\\mathrm{Total}}$": "tab:purple",
         "$\\Sigma\\ \\Gamma_{\\mathrm{Total}}$": "black",
     }

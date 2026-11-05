@@ -229,6 +229,14 @@ def plot_confinement_time_comparison(
         eps=(1 / aspect),
         aion=m_ions_total_amu,
     )
+    kurskiev_st = confine.kurskiev_st_confinement_time(
+        cur_plasma_ma=cur_plasma_ma,
+        b_plasma_toroidal_on_axis=b_plasma_toroidal_on_axis,
+        p_plasma_loss_mw=p_plasma_separatrix_mw,
+        nd_plasma_electron_line_19=nd_plasma_electron_line_19,
+        rmajor=rmajor,
+        kappa=kappa,
+    )
     itpa20_ilc = confine.itpa20_il_confinement_time(
         cur_plasma_ma=cur_plasma_ma,
         b_plasma_toroidal_on_axis=b_plasma_toroidal_on_axis,
@@ -263,6 +271,7 @@ def plot_confinement_time_comparison(
         ),
         rf"{ConfinementTimeModel.ITPA20.full_name}": itpa20,
         rf"{ConfinementTimeModel.ITPA20_IL.full_name}": itpa20_ilc,
+        rf"{ConfinementTimeModel.KURSKIEV_ST.full_name}": kurskiev_st,
     }
     data_values = list(data.values())
 
@@ -295,6 +304,7 @@ def plot_confinement_time_comparison(
         "#c7c7c7",  # light gray
         "#dbdb8d",  # light olive
         "#9edae5",  # light cyan
+        "#393b79",  # dark indigo
     ]
     generator = np.random.default_rng(seed=u_seed)
     x_values = generator.normal(loc=1, scale=0.035, size=len(data.values()))
