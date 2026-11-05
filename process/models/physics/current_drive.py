@@ -2414,10 +2414,8 @@ class CurrentDrive(Model):
         - T. C. Luce et al., “Generation of Localized Noninductive Current by Electron
           Cyclotron Waves on the DIII-D Tokamak,” Physical Review Letters, vol. 83,
           no. 22, pp. 4550-4553, Nov. 1999,
-          doi: https://doi.org/10.1103/physrevlett.83.4550.
+            doi: https://doi.org/10.1103/physrevlett.83.4550.
         """
-        if p_hcd_injected == 0.0:
-            return 0.0
         return (
             (constants.ELECTRON_CHARGE**3 / constants.EPSILON0**2)
             * (
