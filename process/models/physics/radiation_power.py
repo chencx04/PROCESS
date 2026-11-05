@@ -405,7 +405,15 @@ def assign_p_b11_species_radiation_powers(
     fuel_labels = {"H_", "He", "B_"}
     for index, label in enumerate(data.impurity_radiation.imp_label):
         if i_equilibrium_solve == 1 and eq is not None:
-            pden_vol_avg_mw = float(eq.grid.integrate(pden_profiles[index] * eq.J * eq.R)) / data.physics.vol_plasma
+            # The species profile is on the normalized radius grid. The
+            # equilibrium Jacobian is on eq.rho, the same grid as the total
+            # bremsstrahlung integral.
+            pden_eq = np.interp(eq.rho, rho, pden_profiles[index])[:, None]
+            d_vol = eq.J * eq.R
+            vol = float(eq.grid.integrate(d_vol))
+            pden_vol_avg_mw = float(eq.grid.integrate(pden_eq * d_vol)) / max(
+                vol, 1.0e-30
+            )
         else:
             pden_vol_avg_mw = float(
                 calculate_vol_avg_of_profile(
